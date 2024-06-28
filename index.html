@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KẾ HOẠCH LÀM VIỆC TUẦN - IDECO</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 1200px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #333;
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+            position: relative;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .task-cell {
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+        }
+        .selected-red { background-color: #ff6b6b; }
+        .selected-blue { background-color: #4d96ff; }
+        .selected-yellow { background-color: #feca57; }
+        .task-input, .result-input {
+            width: 100%;
+            resize: vertical;
+            min-height: 30px;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        input[type="text"], input[type="date"], textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            display: inline-block;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .user-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .user-info input {
+            width: 30%;
+        }
+        .schedule-container {
+            max-height: 500px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        .color-selector {
+            margin: 10px 0;
+        }
+        #homePage, #planPage {
+            display: none;
+        }
+        .note-popup {
+            display: none;
+            position: absolute;
+            background-color: white;
+            border: 1px solid #ddd;
+            padding: 10px;
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            width: 200px;
+        }
+        .note-icon {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .resize-handle {
+            position: absolute;
+            top: 0;
+            right: -3px;
+            bottom: 0;
+            width: 6px;
+            cursor: col-resize;
+            background-color: #ddd;
+        }
+		.note {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #fff3cd;
+    border: 1px solid #ffeeba;
+    border-radius: 4px;
+    color: #856404;
+}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="homePage">
+            <h1>DANH SÁCH BẢNG KẾ HOẠCH</h1>
+            <table id="planList">
+                <tr>
+                    <th>Tên người lập</th>
+                    <th>Bộ phận</th>
+                    <th>Ngày lập</th>
+                    <th>Hành động</th>
+                </tr>
+            </table>
+            <button onclick="showPlanPage('new')">Tạo kế hoạch mới</button>
+        </div>
+
+        <div id="planPage">
+            <h1>Kế hoạch tuần làm việc - IDECO</h1>
+            
+            <div class="user-info">
+                <input type="text" id="name" placeholder="Tên người lập" required>
+                <input type="text" id="department" placeholder="Bộ phận" required>
+                <input type="date" id="date" required>
+            </div>
+
+            <h2>Mục tiêu công việc trong tuần</h2>
+            <textarea id="goals" rows="4"></textarea>
+           
+            <div class="color-selector">
+                <label>Chọn mức độ ưu tiên: </label>
+                <input type="radio" id="color-red" name="color" value="red" checked>
+                <label for="color-red">Ưu tiên 1 (Đỏ)</label>
+                <input type="radio" id="color-blue" name="color" value="blue">
+                <label for="color-blue">Ưu tiên 2 (Xanh đậm)</label>
+                <input type="radio" id="color-yellow" name="color" value="yellow">
+                <label for="color-yellow">Ưu tiên 3 (Vàng)</label>
+				><strong>Lưu ý:</strong> Tất cả bảng kế hoạch phải gởi file qua email baocaoideco@gmail.com để xem như cùng theo dõi (vì ứng dụng chỉ lưu trên máy tính của người dùng)</p>
+            </div>
+            <button onclick="addTask()">Thêm công việc</button>
+            <button onclick="saveData()">Lưu dữ liệu</button>
+            <button onclick="showHomePage()">Quay lại Danh sách</button>
+            <button onclick="exportToPDF()">Bấm tải PDF thay cho lưu nội dung</button>
+            <button onclick="sendEmail()">Hãy gởi email đính kèm file PDF xem như đã xong</button>
+            <div class="schedule-container">
+                <table id="schedule">
+                    <tr>
+                        <th>Công việc<div class="resize-handle"></div></th>
+                        <th>Thứ 2<div class="resize-handle"></div></th>
+                        <th>Thứ 3<div class="resize-handle"></div></th>
+                        <th>Thứ 4<div class="resize-handle"></div></th>
+                        <th>Thứ 5<div class="resize-handle"></div></th>
+                        <th>Thứ 6<div class="resize-handle"></div></th>
+                        <th>Kết quả mong đợi<div class="resize-handle"></div></th>
+                        <th>Hoàn thành<div class="resize-handle"></div></th>
+                        <th>Xóa</th>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPlanName = 'default';
+        let currentCell = null;
+        let pdfBlob = null;
+
+        function showHomePage() {
+            document.getElementById('homePage').style.display = 'block';
+            document.getElementById('planPage').style.display = 'none';
+            loadPlans();
+        }
+
+        function showPlanPage(planName) {
+            document.getElementById('homePage').style.display = 'none';
+            document.getElementById('planPage').style.display = 'block';
+            currentPlanName = planName;
+            if (planName !== 'new') {
+                loadData(planName);
+            } else {
+                clearForm();
+            }
+        }
+
+        function loadPlans() {
+            const planList = document.getElementById('planList');
+            while (planList.rows.length > 1) {
+                planList.deleteRow(1);
+            }
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith('plan_')) {
+                    const planData = JSON.parse(localStorage.getItem(key));
+                    const row = planList.insertRow(-1);
+                    row.innerHTML = `
+                        <td>${planData.name}</td>
+                        <td>${planData.department}</td>
+                        <td>${planData.date}</td>
+                        <td>
+                            <button onclick="showPlanPage('${key}')">Xem</button>
+                            <button onclick="deletePlan('${key}')">Xóa</button>
+                        </td>
+                    `;
+                }
+            }
+        }
+
+        function deletePlan(key) {
+            if (confirm('Bạn có chắc chắn muốn xóa kế hoạch này?')) {
+                localStorage.removeItem(key);
+                loadPlans();
+            }
+        }
+
+        function addTask() {
+            const table = document.getElementById('schedule');
+            const newRow = table.insertRow(-1);
+            
+            const cellTask = newRow.insertCell(0);
+            cellTask.innerHTML = '<textarea class="task-input" placeholder="Nhập công việc"></textarea>';
+            
+            for (let i = 1; i <= 5; i++) {
+                const cell = newRow.insertCell(i);
+                cell.classList.add('task-cell');
+                cell.addEventListener('click', toggleSelection);
+                cell.innerHTML += '<span class="note-icon" onclick="showNotePopup(event)">📝</span>';
+            }
+            
+            const cellResult = newRow.insertCell(6);
+            cellResult.innerHTML = '<textarea class="result-input" placeholder="Kết quả mong đợi"></textarea>';
+            
+            const cellComplete = newRow.insertCell(7);
+            cellComplete.innerHTML = '<input type="checkbox">';
+            
+            const cellDelete = newRow.insertCell(8);
+            cellDelete.innerHTML = '<button onclick="deleteTask(this)">Xóa</button>';
+        }
+
+        function toggleSelection(e) {
+            if (e.target.classList.contains('note-icon')) return;
+            const cell = e.target.closest('.task-cell');
+            const color = document.querySelector('input[name="color"]:checked').value;
+            if (cell.classList.contains(`selected-${color}`)) {
+                cell.classList.remove(`selected-${color}`);
+            } else {
+                cell.classList.remove('selected-red', 'selected-blue', 'selected-yellow');
+                cell.classList.add(`selected-${color}`);
+            }
+        }
+
+        function deleteTask(button) {
+            const row = button.parentNode.parentNode;
+            row.parentNode.removeChild(row);
+        }
+
+        function saveData() {
+            const data = getFormData();
+            const key = currentPlanName === 'new' ? `plan_${Date.now()}` : currentPlanName;
+            localStorage.setItem(key, JSON.stringify(data));
+            alert('Dữ liệu đã được lưu!');
+            showHomePage();
+        }
+
+        function loadData(key) {
+            const data = JSON.parse(localStorage.getItem(key));
+            if (data) {
+                setFormData(data);
+            } else {
+                alert('Không tìm thấy dữ liệu đã lưu!');
+            }
+        }
+
+        function exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF();
+            
+            pdf.addFont('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Regular.ttf', 'Roboto', 'normal');
+            pdf.setFont('Roboto');
+
+            const content = document.querySelector("#planPage");
+            
+            html2canvas(content).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const imgProps = pdf.getImageProperties(imgData);
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                
+                pdfBlob = pdf.output('blob');
+                const pdfUrl = URL.createObjectURL(pdfBlob);
+                const downloadLink = document.createElement('a');
+                downloadLink.href = pdfUrl;
+                downloadLink.download = "ke_hoach_cong_viec.pdf";
+                downloadLink.click();
+                URL.revokeObjectURL(pdfUrl);
+            });
+        }
+
+       function sendEmail() {
+    const recipients = [
+        "baocaoideco@gmail.com",
+        "uyenhuongideco@gmail.com",
+        "minhkhanh.vt2023@ideco.com.vn",
+        "minhtriet.nt2023@ideco.com.vn",
+        "trantai@ideco.com.vn"
+    ];
+    const subject = encodeURIComponent("Kế hoạch công việc IDECO");
+    const body = encodeURIComponent("Kính gởi Ban giám đốc/ Quản lý bộ phận,\n\nĐính kèm là bảng kế hoạch công việc của tôi.\n\nTrân trọng,\n" + document.getElementById('name').value);
+
+    const mailtoLink = `mailto:${recipients.join(',')}?subject=${subject}&body=${body}`;
+    
+    // Tạo một thẻ a và kích hoạt sự kiện click
+    const link = document.createElement('a');
+    link.href = mailtoLink;
+    link.click();
+}
+        function getFormData() {
+            const data = {
+                name: document.getElementById('name').value,
+                department: document.getElementById('department').value,
+                date: document.getElementById('date').value,
+                goals: document.getElementById('goals').value,
+                tasks: []
+            };
+
+            const rows = document.getElementById('schedule').rows;
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                const task = {
+                    description: row.cells[0].querySelector('textarea').value,
+                    days: [],
+                    notes: [],
+                    result: row.cells[6].querySelector('textarea').value,
+                    completed: row.cells[7].querySelector('input').checked
+                };
+                for (let j = 1; j <= 5; j++) {
+                    task.days.push(
+                        row.cells[j].classList.contains('selected-red') ? 'red' :
+                        (row.cells[j].classList.contains('selected-blue') ? 'blue' :
+                        (row.cells[j].classList.contains('selected-yellow') ? 'yellow' : ''))
+                    );
+                    task.notes.push(row.cells[j].getAttribute('data-note') || '');
+                }
+                data.tasks.push(task);
+            }
+
+            return data;
+        }
+
+        function setFormData(data) {
+            document.getElementById('name').value = data.name;
+            document.getElementById('department').value = data.department;
+            document.getElementById('date').value = data.date;
+            document.getElementById('goals').value = data.goals;
+
+            const table = document.getElementById('schedule');
+            while (table.rows.length > 1) {
+                table.deleteRow(1);
+            }
+
+            data.tasks.forEach(task => {
+                addTask();
+                const newRow = table.rows[table.rows.length - 1];
+                newRow.cells[0].querySelector('textarea').value = task.description;
+                for (let i = 0; i < 5; i++) {
+                    if (task.days[i]) {
+                        newRow.cells[i+1].classList.add(`selected-${task.days[i]}`);
+                    }
+                    if (task.notes[i]) {
+                        newRow.cells[i+1].setAttribute('data-note', task.notes[i]);
+                    }
+                }
+                newRow.cells[6].querySelector('textarea').value = task.result;
+                newRow.cells[7].querySelector('input').checked = task.completed;
+            });
+        }
+
+        function clearForm() {
+            document.getElementById('name').value = '';
+            document.getElementById('department').value = '';
+            document.getElementById('date').value = '';
+            document.getElementById('goals').value = '';
+            const table = document.getElementById('schedule');
+            while (table.rows.length > 1) {
+                table.deleteRow(1);
+            }
+        }
+
+        function showNotePopup(event) {
+            event.stopPropagation();
+            currentCell = event.target.closest('.task-cell');
+            let popup = document.getElementById('notePopup');
+            
+            if (!popup) {
+                popup = document.createElement('div');
+                popup.id = 'notePopup';
+                popup.className = 'note-popup';
+                const textarea = document.createElement('textarea');
+                textarea.rows = 3;
+                textarea.cols = 30;
+                const saveButton = document.createElement('button');
+                saveButton.textContent = 'Lưu';
+                saveButton.onclick = saveNote;
+                popup.appendChild(textarea);
+                popup.appendChild(saveButton);
+                document.body.appendChild(popup);
+            }
+            
+            const note = currentCell.getAttribute('data-note') || '';
+            popup.querySelector('textarea').value = note;
+
+            const rect = currentCell.getBoundingClientRect();
+            popup.style.left = `${rect.left + window.pageXOffset}px`;
+            popup.style.top = `${rect.bottom + window.pageYOffset}px`;
+            popup.style.display = 'block';
+        }
+
+        function saveNote() {
+            const popup = document.getElementById('notePopup');
+            const note = popup.querySelector('textarea').value;
+            currentCell.setAttribute('data-note', note);
+            popup.style.display = 'none';
+        }
+
+        document.addEventListener('click', function(event) {
+            const popup = document.getElementById('notePopup');
+            if (popup && !popup.contains(event.target) && !event.target.classList.contains('note-icon')) {
+                popup.style.display = 'none';
+            }
+        });
+
+        // Column resizing functionality
+        let isResizing = false;
+        let currentHeader = null;
+        let startX, startWidth;
+
+        document.addEventListener('mousedown', function(e) {
+            if (e.target.classList.contains('resize-handle')) {
+                isResizing = true;
+                currentHeader = e.target.parentElement;
+                startX = e.pageX;
+                startWidth = currentHeader.offsetWidth;
+            }
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (!isResizing) return;
+            const diff = e.pageX - startX;
+            currentHeader.style.width = `${startWidth + diff}px`;
+        });
+
+        document.addEventListener('mouseup', function(e) {
+            isResizing = false;
+            currentHeader = null;
+        });
+
+        window.onload = showHomePage;
+    </script>
+</body>
+</html>
